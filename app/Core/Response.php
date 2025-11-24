@@ -1,39 +1,44 @@
 <?php
-declare(strict_types=1);
 
 namespace App\Core;
 
-final class Response
+/**
+ * Class Response
+ * --------------------------------------------------------
+ * Handles HTTP responses: status codes, headers, and output.
+ * --------------------------------------------------------
+ */
+class Response
 {
-    private int $status = 200;
-    private array $headers = [];
-
-    public function setStatus(int $code): self
+    /**
+     * Set the HTTP status code
+     *
+     * @param int $code
+     */
+    public function setStatusCode(int $code): void
     {
-        $this->status = $code;
         http_response_code($code);
-        return $this;
     }
 
-    public function header(string $name, string $value): self
+    /**
+     * Set a response header
+     *
+     * @param string $key
+     * @param string $value
+     */
+    public function setHeader(string $key, string $value): void
     {
-        header("{$name}: {$value}");
-        $this->headers[$name] = $value;
-        return $this;
+        header("$key: $value");
     }
 
-    public function redirect(string $url, int $status = 302): void
+    /**
+     * Send a JSON response
+     *
+     * @param array $data
+     */
+    public function json(array $data): void
     {
-        $this->setStatus($status);
-        header("Location: {$url}");
-        exit;
-    }
-
-    public function json($data, int $status = 200): void
-    {
-        $this->setStatus($status);
-        $this->header('Content-Type', 'application/json');
+        $this->setHeader('Content-Type', 'application/json');
         echo json_encode($data);
-        exit;
     }
 }

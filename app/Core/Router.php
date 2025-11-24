@@ -1,111 +1,173 @@
 <?php
-declare(strict_types=1);
 
 namespace App\Core;
 
+use App\Core\Request;
+use App\Core\Response;
+
+/**
+ * Class Router
+ * --------------------------------------------------------
+ * Handles route registration, matching, and dispatching.
+ * Supports dynamic routes like /users/{id}.
+ * --------------------------------------------------------
+ */
 class Router
 {
-    private array $routes = [];
-    private array $globalMiddleware = [];
+    protected Request $request;
+    protected Response $response;
 
-    public function get(string $path, $handler, array $middleware = []): void
-    {
-        $this->addRoute('GET', $path, $handler, $middleware);
-    }
+    /**
+     * Route storage: ['get' => [...], 'post' => [...]]
+     *
+     * @var array
+     */
+    protected array $routes = [
+        'get' => [],
+        'post' => []
+    ];
 
-    public function post(string $path, $handler, array $middleware = []): void
-    {
-        $this->addRoute('POST', $path, $handler, $middleware);
-    }
+    protected array $middleware = [];
 
-    private function addRoute(string $method, string $path, $handler, array $middleware = []): void
+    /**
+     * Router Constructor
+     */
+    public function __construct(Request $request, Response $response)
     {
-        $this->routes[] = compact('method', 'path', 'handler', 'middleware');
+        $this->request  = $request;
+        $this->response = $response;
     }
 
     /**
-     * Add middleware that runs on all routes
+     * Register GET route
+     *
+     * @param string $path
+     * @param callable|string $handler
+     * @return self
      */
-    public function middleware(array $middleware): void
+    public function get(string $path, $handler): self
     {
-        $this->globalMiddleware = array_merge($this->globalMiddleware, $middleware);
+        $this->routes['get'][$path] = $handler;
+        return $this;
     }
 
-    public function dispatch(Request $request, Response $response): void
+    /**
+     * Register POST route
+     *
+     * @param string $path
+     * @param callable|string $handler
+     * @return self
+     */
+    public function post(string $path, $handler): self
     {
-        $method = strtoupper($request->method);
-        $uri = rtrim($request->path, '/') ?: '/';
+        $this->routes['post'][$path] = $handler;
+        return $this;
+    }
 
-        foreach ($this->routes as $route) {
-            if ($route['method'] !== $method) continue;
+    /**
+     * Resolve and dispatch current route
+     */
+    public function resolve(): void
+    {
+        $method = $this->request->method();
+        $currentPath = $this->request->path();
 
-            $pattern = $this->convertPathToRegex($route['path']);
-            if (preg_match($pattern, $uri, $matches)) {
-                $params = $this->extractParams($matches);
-                $handler = $route['handler'];
-                $middlewareStack = array_merge($this->globalMiddleware, $route['middleware']);
+        // First check static routes
+        if (isset($this->routes[$method][$currentPath])) {
+            $handler = $this->routes[$method][$currentPath];
+            $this->executeHandler($handler);
+            return;
+        }
 
-                $this->runMiddleware($middlewareStack, $request, $response);
+        // Check dynamic routes
+        foreach ($this->routes[$method] as $route => $handler) {
+            $pattern = $this->convertToRegex($route);
+            if (preg_match($pattern, $currentPath, $matches)) {
+                array_shift($matches); // remove full match
+                $this->executeHandler($handler, $matches);
+                return;
+            }
+        }
 
-                if (is_string($handler) && strpos($handler, '@') !== false) {
-                    [$controllerName, $methodName] = explode('@', $handler);
-                    $controllerClass = $this->qualifyController($controllerName);
-                    if (!class_exists($controllerClass)) {
-                        throw new \RuntimeException("Controller {$controllerClass} not found.");
-                    }
-                    $controller = new $controllerClass();
-                    call_user_func_array([$controller, $methodName], array_merge([$request, $response], $params));
-                    return;
-                } elseif (is_callable($handler)) {
-                    call_user_func_array($handler, array_merge([$request, $response], $params));
-                    return;
-                } else {
-                    throw new \RuntimeException('Invalid route handler.');
+        // No route found -> 404
+        $this->response->setStatusCode(404);
+        echo "404 - Page Not Found";
+    }
+
+    /**
+     * Convert route definitions like /users/{id}
+     * into regex patterns.
+     */
+    protected function convertToRegex(string $route): string
+    {
+        $pattern = preg_replace('#\{([^}]+)\}#', '([^/]+)', $route);
+        return '#^' . $pattern . '$#';
+    }
+
+    /**
+     * Execute controller or closure
+     *
+     * @param mixed $handler
+     * @param array $params
+     */
+    protected function executeHandler($handler, array $params = []): void
+    {
+        // Define the final controller execution
+        $controllerExecution = function () use ($handler, $params) {
+            // Case 1: closure function
+            if (is_callable($handler)) {
+                echo call_user_func_array($handler, $params);
+                return;
+            }
+
+            // Case 2: Controller@method string
+            if (is_string($handler)) {
+                [$controllerName, $method] = explode('@', $handler);
+
+                $controllerClass = "App\\Controllers\\$controllerName";
+
+                if (!class_exists($controllerClass)) {
+                    throw new \Exception("Controller $controllerClass not found.");
                 }
-            }
-        }
 
-        $response->setStatus(404);
-        echo "404 Not Found";
-    }
+                $controller = new $controllerClass();
 
-    private function runMiddleware(array $middlewareStack, Request $request, Response $response): void
-    {
-        foreach ($middlewareStack as $middleware) {
-            if (is_callable($middleware)) {
-                $middleware($request, $response);
-            } elseif (is_string($middleware) && class_exists($middleware)) {
-                $instance = new $middleware();
-                if (method_exists($instance, 'handle')) {
-                    $instance->handle($request, $response);
+                if (!method_exists($controller, $method)) {
+                    throw new \Exception("Method $method not found in controller $controllerClass.");
                 }
+
+                echo call_user_func_array([$controller, $method], $params);
+                return;
             }
+
+            throw new \Exception("Invalid route handler type.");
+        };
+
+        // If no middleware defined, just execute controller/closure
+        if (empty($this->middleware)) {
+            $controllerExecution();
+            return;
         }
+
+        // Wrap middleware stack
+        $next = $controllerExecution;
+        $stack = array_reverse($this->middleware);
+
+        foreach ($stack as $middlewareClass) {
+            $middlewareInstance = new $middlewareClass();
+
+            // Wrap the current $next into middleware handle
+            $next = fn() => $middlewareInstance->handle($this->request, $this->response, $next);
+        }
+
+        // Execute middleware stack + final controller
+        $next();
     }
 
-    private function convertPathToRegex(string $path): string
+    // Method to attach middleware to a route
+    public function middleware(string|array $middlewares): self
     {
-        $path = rtrim($path, '/') ?: '/';
-        $regex = preg_replace('#\{([a-zA-Z0-9_]+)\}#', '(?P<$1>[^/]+)', $path);
-        return '#^' . $regex . '$#';
-    }
-
-    private function extractParams(array $matches): array
-    {
-        $params = [];
-        foreach ($matches as $k => $v) {
-            if (is_string($k)) {
-                $params[$k] = $v;
-            }
-        }
-        return $params;
-    }
-
-    private function qualifyController(string $name): string
-    {
-        if (!str_ends_with($name, 'Controller')) {
-            $name .= 'Controller';
-        }
-        return "App\\Controllers\\{$name}";
+        $this->middleware = is_array($middlewares) ? $middlewares : [$middlewares];
+        return $this;
     }
 }

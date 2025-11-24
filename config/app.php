@@ -1,7 +1,42 @@
 <?php
+
 return [
+
+    /*
+    |--------------------------------------------------------------------------
+    | Application Name
+    |--------------------------------------------------------------------------
+    */
     'name' => $_ENV['APP_NAME'] ?? 'digify_v4',
-    'env'  => $_ENV['APP_ENV'] ?? 'production',
-    'debug'=> isset($_ENV['APP_DEBUG']) ? filter_var($_ENV['APP_DEBUG'], FILTER_VALIDATE_BOOLEAN) : false,
-    'url'  => $_ENV['APP_URL'] ?? 'http://localhost'
+
+    /*
+    |--------------------------------------------------------------------------
+    | Application Environment
+    |--------------------------------------------------------------------------
+    | Options: local, production, staging
+    */
+    'env' => $_ENV['APP_ENV'] ?? 'local',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Application Debug Mode
+    |--------------------------------------------------------------------------
+    | When true, detailed error messages will be shown
+    */
+    'debug' => filter_var($_ENV['APP_DEBUG'] ?? true, FILTER_VALIDATE_BOOLEAN),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Application Base URL
+    |--------------------------------------------------------------------------
+    */
+    'url' => $_ENV['APP_URL'] ?? 'http://localhost/digify_v4',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Default Timezone
+    |--------------------------------------------------------------------------
+    */
+    'timezone' => $_ENV['APP_TIMEZONE'] ?? 'Asia/Manila',
+
 ];

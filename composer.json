@@ -1,17 +1,17 @@
 {
-  "name": "digify/digify_v4",
-  "description": "digify_v4 - Lightweight Vanilla PHP + ES6 MVC",
-  "type": "project",
-  "require": {
-    "php": ">=8.1",
-    "vlucas/phpdotenv": "^5.5"
-  },
-  "autoload": {
-    "psr-4": {
-      "App\\": "app/"
+    "name": "digify/digify_v4",
+    "description": "Lightweight Vanilla PHP + ES6 MVC Project",
+    "type": "project",
+    "require": {
+        "php": ">=8.0",
+        "vlucas/phpdotenv": "^5.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/"
+        }
+    },
+    "scripts": {
+        "start": "php -S localhost:8000 -t public"
     }
-  },
-  "scripts": {
-    "start": "php -S localhost:8000 -t public"
-  }
 }

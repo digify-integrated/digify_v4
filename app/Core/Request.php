@@ -1,37 +1,81 @@
 <?php
-declare(strict_types=1);
 
 namespace App\Core;
 
-final class Request
+/**
+ * Class Request
+ * --------------------------------------------------------
+ * Handles and normalizes incoming HTTP request data.
+ * Extracts URL, method, query parameters, and POST data.
+ * --------------------------------------------------------
+ */
+class Request
 {
-    public string $method;
-    public string $path;
-    public array $get;
-    public array $post;
-    public array $server;
-    public array $cookies;
-    public array $files;
-    public array $headers;
-
-    private function __construct() {}
-
-    public static function fromGlobals(): self
+    /**
+     * Get the request HTTP method (GET, POST, etc.)
+     *
+     * @return string
+     */
+    public function method(): string
     {
-        $req = new self();
-        $req->method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-        $req->path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
-        $req->get = $_GET ?? [];
-        $req->post = $_POST ?? [];
-        $req->server = $_SERVER ?? [];
-        $req->cookies = $_COOKIE ?? [];
-        $req->files = $_FILES ?? [];
-        $req->headers = function_exists('getallheaders') ? getallheaders() : [];
-        return $req;
+        return strtolower($_SERVER['REQUEST_METHOD'] ?? 'get');
     }
 
-    public function input(string $key, $default = null)
+    /**
+     * Check if request method is GET
+     */
+    public function isGet(): bool
     {
-        return $this->post[$key] ?? $this->get[$key] ?? $default;
+        return $this->method() === 'get';
+    }
+
+    /**
+     * Check if request method is POST
+     */
+    public function isPost(): bool
+    {
+        return $this->method() === 'post';
+    }
+
+    /**
+     * Get sanitized URL path (no query string)
+     *
+     * @return string
+     */
+    public function path(): string
+    {
+        $path = $_SERVER['REQUEST_URI'] ?? '/';
+
+        // Remove query string
+        $position = strpos($path, '?');
+        if ($position !== false) {
+            $path = substr($path, 0, $position);
+        }
+
+        return rtrim($path, '/') ?: '/';
+    }
+
+    /**
+     * Get sanitized request data
+     *
+     * @return array
+     */
+    public function input(): array
+    {
+        $data = [];
+
+        if ($this->isGet()) {
+            foreach ($_GET as $key => $value) {
+                $data[$key] = htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+            }
+        }
+
+        if ($this->isPost()) {
+            foreach ($_POST as $key => $value) {
+                $data[$key] = htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+            }
+        }
+
+        return $data;
     }
 }

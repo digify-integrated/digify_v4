@@ -1,61 +1,85 @@
 <?php
-declare(strict_types=1);
 
 namespace App\Core;
 
+/**
+ * Class ErrorHandler
+ * --------------------------------------------------------
+ * Custom error and exception handler.
+ * Logs all errors to storage/logs/app.log
+ * Displays detailed errors in development mode.
+ * --------------------------------------------------------
+ */
 class ErrorHandler
 {
-    private Logger $logger;
-    private string $env;
-    private bool $debug;
-
-    public function __construct(Logger $logger, string $env = 'production', bool $debug = false)
+    /**
+     * Register custom error and exception handlers
+     */
+    public function register(): void
     {
-        $this->logger = $logger;
-        $this->env = $env;
-        $this->debug = $debug;
+        set_error_handler([$this, 'handleError']);
+        set_exception_handler([$this, 'handleException']);
+        register_shutdown_function([$this, 'handleShutdown']);
     }
 
-    public function handleException(\Throwable $e): void
+    /**
+     * Handle PHP errors
+     */
+    public function handleError(int $errno, string $errstr, string $errfile, int $errline): void
     {
-        $this->logger->error($e->getMessage(), [
-            'file' => $e->getFile(),
-            'line' => $e->getLine(),
-            'trace' => $e->getTraceAsString(),
-            'class' => get_class($e)
-        ]);
+        $message = "[Error][$errno] $errstr in $errfile on line $errline";
+        $this->log($message);
 
-        if ($this->debug) {
-            // Detailed HTML output for development
-            http_response_code(500);
-            echo "<h1>Uncaught Exception</h1>";
-            echo "<p><strong>Message:</strong> " . e($e->getMessage()) . "</p>";
-            echo "<p><strong>File:</strong> " . e($e->getFile()) . " on line " . e((string)$e->getLine()) . "</p>";
-            echo "<pre>" . e($e->getTraceAsString()) . "</pre>";
-        } else {
-            http_response_code(500);
-            echo "An error occurred. Please contact the system administrator.";
+        if ($_ENV['APP_DEBUG'] ?? false) {
+            echo nl2br($message);
         }
     }
 
-    public function handleError(int $severity, string $message, string $file, int $line): void
+    /**
+     * Handle uncaught exceptions
+     */
+    public function handleException(\Throwable $exception): void
     {
-        $this->logger->error($message, ['file' => $file, 'line' => $line, 'severity' => $severity]);
-        if ($this->debug) {
-            throw new \ErrorException($message, 0, $severity, $file, $line);
+        $message = "[Exception][" . get_class($exception) . "] "
+            . $exception->getMessage()
+            . " in " . $exception->getFile()
+            . " on line " . $exception->getLine();
+
+        $this->log($message);
+
+        if ($_ENV['APP_DEBUG'] ?? false) {
+            echo nl2br($message);
         }
     }
 
+    /**
+     * Handle fatal errors on shutdown
+     */
     public function handleShutdown(): void
     {
         $error = error_get_last();
-        if ($error !== null) {
-            $this->logger->error('Shutdown error', $error);
-            if ($this->debug) {
-                echo '<pre>';
-                print_r($error);
-                echo '</pre>';
+        if ($error) {
+            $message = "[Shutdown][{$error['type']}] {$error['message']} in {$error['file']} on line {$error['line']}";
+            $this->log($message);
+
+            if ($_ENV['APP_DEBUG'] ?? false) {
+                echo nl2br($message);
             }
         }
+    }
+
+    /**
+     * Log message to storage/logs/app.log
+     */
+    protected function log(string $message): void
+    {
+        $logDir = dirname(__DIR__, 2) . '/storage/logs';
+        if (!is_dir($logDir)) {
+            mkdir($logDir, 0755, true);
+        }
+
+        $logFile = $logDir . '/app.log';
+        $date = date('Y-m-d H:i:s');
+        file_put_contents($logFile, "[$date] $message" . PHP_EOL, FILE_APPEND);
     }
 }

@@ -4,7 +4,12 @@
     "type": "project",
     "require": {
         "php": ">=8.0",
-        "vlucas/phpdotenv": "^5.5"
+        "vlucas/phpdotenv": "^5.5",
+        "phpmailer/phpmailer": "*",
+        "phpoffice/phpspreadsheet": "^5.2",
+        "psr/simple-cache": "^3.0",
+        "myclabs/php-enum": "^1.8",
+        "maennchen/zipstream-php": "^3.1"
     },
     "autoload": {
         "psr-4": {

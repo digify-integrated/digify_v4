@@ -2,42 +2,56 @@
 
 namespace App\Core;
 
-/**
- * Class Controller
- * --------------------------------------------------------
- * Base Controller that all controllers extend.
- * Common controller functions (render, json, redirect)
- * can be added here later.
- * --------------------------------------------------------
- */
 class Controller
 {
     /**
-     * Render a view file
-     * (View system will be implemented later)
+     * Render a view with optional layout support
      *
-     * @param string $view
-     * @param array $data
+     * Usage:
+     *   return $this->view('auth/login', [], 'auth-layout');
+     *   return $this->view('dashboard/index'); // no layout
+     *
+     * @param string $view   View file path (relative to resources/views/)
+     * @param array  $data   Data to be extracted into the view
+     * @param string|null $layout  Layout file name (inside resources/views/layouts/)
+     *
      * @return void
      */
-    protected function view(string $view, array $data = []): void
+    protected function view(string $view, array $data = [], ?string $layout = null): void
     {
         extract($data);
 
-        $viewPath = dirname(__DIR__, 2) . "/resources/views/{$view}.php";
+        $basePath = dirname(__DIR__, 2) . "/resources/views";
+
+        $viewPath = $basePath . "/{$view}.php";
 
         if (!file_exists($viewPath)) {
-            throw new \Exception("View '{$view}' not found.");
+            throw new \Exception("View '{$view}' not found at {$viewPath}");
         }
 
+        // If no layout → load view directly
+        if ($layout === null) {
+            require $viewPath;
+            return;
+        }
+
+        // Layout mode: capture view output
+        ob_start();
         require $viewPath;
+        $content = ob_get_clean();
+
+        // Load layout file
+        $layoutPath = $basePath . "/layouts/{$layout}.php";
+
+        if (!file_exists($layoutPath)) {
+            throw new \Exception("Layout '{$layout}' not found at {$layoutPath}");
+        }
+
+        require $layoutPath;
     }
 
     /**
      * Return JSON response
-     *
-     * @param array $data
-     * @return void
      */
     protected function json(array $data): void
     {
@@ -47,9 +61,6 @@ class Controller
 
     /**
      * Redirect to another URL
-     *
-     * @param string $url
-     * @return void
      */
     protected function redirect(string $url): void
     {

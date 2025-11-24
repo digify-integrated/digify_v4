@@ -58,4 +58,15 @@ class Helpers
         header("Location: $url");
         exit;
     }
+
+    public static function baseUrl(string $path = ''): string
+    {
+        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
+        $host = $_SERVER['HTTP_HOST'];
+
+        // This auto-detects your app folder (e.g., /digify_v4)
+        $scriptDir = str_replace('/index.php', '', $_SERVER['SCRIPT_NAME']);
+
+        return rtrim($protocol . $host . $scriptDir, '/') . '/' . ltrim($path, '/');
+    }
 }

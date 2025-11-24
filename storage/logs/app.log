@@ -1,0 +1,14 @@
+[2025-11-24 09:36:21] [Exception][Exception] Database connection failed: SQLSTATE[HY000] [1049] Unknown database 'digifydb' in C:\xampp\htdocs\digify_v4\app\Core\Database.php on line 41
+[2025-11-24 09:36:38] [Exception][Exception] Method login not found in controller App\Controllers\AuthController. in C:\xampp\htdocs\digify_v4\app\Core\Router.php on line 136
+[2025-11-24 09:37:38] [Error][2] require_once(../layouts/auth-layout.php): Failed to open stream: No such file or directory in C:\xampp\htdocs\digify_v4\resources\views\auth\login.php on line 2
+[2025-11-24 09:37:38] [Exception][Error] Failed opening required '../layouts/auth-layout.php' (include_path='C:\xampp\php\PEAR') in C:\xampp\htdocs\digify_v4\resources\views\auth\login.php on line 2
+[2025-11-24 09:41:06] [Error][2] require_once(../partials/head-meta-tags.php): Failed to open stream: No such file or directory in C:\xampp\htdocs\digify_v4\resources\views\layouts\auth-layout.php on line 6
+[2025-11-24 09:41:06] [Exception][Error] Failed opening required '../partials/head-meta-tags.php' (include_path='C:\xampp\php\PEAR') in C:\xampp\htdocs\digify_v4\resources\views\layouts\auth-layout.php on line 6
+[2025-11-24 09:41:59] [Error][2] Undefined variable $pageTitle in C:\xampp\htdocs\digify_v4\resources\views\partials\head-meta-tags.php on line 5
+[2025-11-24 09:45:38] [Error][2] Undefined variable $pageTitle in C:\xampp\htdocs\digify_v4\resources\views\partials\head-meta-tags.php on line 5
+[2025-11-24 10:11:01] [Error][2] include(C:\xampp\htdocs\digify_v4\app\Core/../config/app.php): Failed to open stream: No such file or directory in C:\xampp\htdocs\digify_v4\app\Core\Helpers.php on line 99
+[2025-11-24 10:11:01] [Error][2] include(): Failed opening 'C:\xampp\htdocs\digify_v4\app\Core/../config/app.php' for inclusion (include_path='C:\xampp\php\PEAR') in C:\xampp\htdocs\digify_v4\app\Core\Helpers.php on line 99
+[2025-11-24 10:11:01] [Exception][TypeError] Cannot assign bool to property App\Core\Helpers::$config of type ?array in C:\xampp\htdocs\digify_v4\app\Core\Helpers.php on line 99
+[2025-11-24 10:11:35] [Error][2] include(C:\xampp\htdocs\digify_v4\app\Core/../config/app.php): Failed to open stream: No such file or directory in C:\xampp\htdocs\digify_v4\app\Core\Helpers.php on line 74
+[2025-11-24 10:11:35] [Error][2] include(): Failed opening 'C:\xampp\htdocs\digify_v4\app\Core/../config/app.php' for inclusion (include_path='C:\xampp\php\PEAR') in C:\xampp\htdocs\digify_v4\app\Core\Helpers.php on line 74
+[2025-11-24 10:12:21] [Exception][Error] Call to undefined method App\Core\Helpers::config() in C:\xampp\htdocs\digify_v4\resources\views\partials\head-meta-tags.php on line 5

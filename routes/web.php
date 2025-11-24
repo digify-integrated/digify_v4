@@ -7,7 +7,7 @@ use App\Core\App;
 // --------------------------------------------------------
 
 // Home page
-$app->get('/', 'HomeController@index');
+$app->get('/', 'AuthController@index');
 
 // About page using closure
 $app->get('/about', function () {

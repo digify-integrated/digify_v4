@@ -1,129 +1,97 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Core;
 
 use PDO;
 use PDOException;
+use Exception;
 
 /**
  * Class Database
  * --------------------------------------------------------
- * Lightweight PDO wrapper with support for
- * prepared statements and stored procedures.
- * Singleton pattern ensures a single DB connection.
+ * Singleton PDO wrapper with support for stored procedures.
  * --------------------------------------------------------
  */
-class Database
+final class Database
 {
-    private static ?Database $instance = null;
+    private static ?self $instance = null;
     private PDO $pdo;
 
     /**
-     * Private constructor to prevent direct instantiation.
+     * Private constructor for singleton
      */
-    private function __construct()
+    private function __construct(array $config = [])
     {
-        $host = $_ENV['DB_HOST'] ?? '127.0.0.1';
-        $port = $_ENV['DB_PORT'] ?? '3306';
-        $dbname = $_ENV['DB_NAME'] ?? '';
-        $username = $_ENV['DB_USER'] ?? '';
-        $password = $_ENV['DB_PASS'] ?? '';
+        $host = $config['host'] ?? $_ENV['DB_HOST'] ?? '127.0.0.1';
+        $port = $config['port'] ?? $_ENV['DB_PORT'] ?? '3306';
+        $dbname = $config['database'] ?? $_ENV['DB_NAME'] ?? '';
+        $user = $config['username'] ?? $_ENV['DB_USER'] ?? '';
+        $pass = $config['password'] ?? $_ENV['DB_PASS'] ?? '';
+        $charset = $config['charset'] ?? $_ENV['DB_CHARSET'] ?? 'utf8mb4';
 
-        $dsn = "mysql:host=$host;port=$port;dbname=$dbname;charset=utf8mb4";
+        $dsn = "mysql:host={$host};port={$port};dbname={$dbname};charset={$charset}";
 
         try {
-            $this->pdo = new PDO($dsn, $username, $password, [
-                PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_PERSISTENT         => false,
-            ]);
+            $this->pdo = new PDO(
+                $dsn,
+                $user,
+                $pass,
+                [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_PERSISTENT => false,
+                ]
+            );
         } catch (PDOException $e) {
-            throw new \Exception("Database connection failed: " . $e->getMessage());
+            throw new Exception("Database connection failed: " . $e->getMessage());
         }
     }
 
     /**
-     * Get the singleton instance of the Database.
-     *
-     * @return Database
+     * Get singleton instance
      */
-    public static function getInstance(): Database
+    public static function getInstance(array $config = []): self
     {
-        if (static::$instance === null) {
-            static::$instance = new Database();
+        if (self::$instance === null) {
+            self::$instance = new self($config);
         }
-        return static::$instance;
+
+        return self::$instance;
     }
 
-    /**
-     * Run a SELECT query and return all rows.
-     *
-     * @param string $sql
-     * @param array $params
-     * @return array
-     */
-    public function fetchAll(string $sql, array $params = []): array
+    // --------------------------------------------------------
+    // Stored Procedure Helpers
+    // --------------------------------------------------------
+
+    public function callProcedure(string $procedure, array $params = []): array
     {
-        $statement = $this->pdo->prepare($sql);
-        $statement->execute($params);
+        $placeholders = implode(',', array_map(fn(string $k) => ":$k", array_keys($params)));
+        $sql = "CALL {$procedure}({$placeholders})";
 
-        return $statement->fetchAll();
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /**
-     * Run a SELECT query and return a single row.
-     *
-     * @param string $sql
-     * @param array $params
-     * @return array|null
-     */
-    public function fetch(string $sql, array $params = []): ?array
+    public function callProcedureRow(string $procedure, array $params = []): ?array
     {
-        $statement = $this->pdo->prepare($sql);
-        $statement->execute($params);
-
-        $result = $statement->fetch();
-        return $result ?: null;
+        $rows = $this->callProcedure($procedure, $params);
+        return $rows[0] ?? null;
     }
 
-    /**
-     * Run INSERT/UPDATE/DELETE queries.
-     *
-     * @param string $sql
-     * @param array $params
-     * @return int Number of affected rows
-     */
-    public function execute(string $sql, array $params = []): int
+    public function callProcedureValue(string $procedure, array $params = []): mixed
     {
-        $statement = $this->pdo->prepare($sql);
-        $statement->execute($params);
-
-        return $statement->rowCount();
+        $row = $this->callProcedureRow($procedure, $params);
+        return $row ? array_values($row)[0] : null;
     }
 
-    /**
-     * Call a stored procedure and return the results.
-     *
-     * @param string $procedureName
-     * @param array $params
-     * @return array
-     */
-    public function callProcedure(string $procedureName, array $params = []): array
-    {
-        $placeholders = implode(',', array_fill(0, count($params), '?'));
-        $sql = "CALL $procedureName($placeholders)";
+    // --------------------------------------------------------
+    // Raw PDO Access
+    // --------------------------------------------------------
 
-        $statement = $this->pdo->prepare($sql);
-        $statement->execute(array_values($params));
-
-        return $statement->fetchAll();
-    }
-
-    /**
-     * Get the raw PDO connection (if needed).
-     *
-     * @return PDO
-     */
     public function pdo(): PDO
     {
         return $this->pdo;

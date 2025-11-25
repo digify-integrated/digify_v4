@@ -1,16 +1,19 @@
-<?php use App\Core\Csrf; ?>
+<?php 
+
+use App\Core\Csrf;
+use App\Core\Helpers;
+
+?>
 
 <form class="form w-100" id="login_form" method="post" action="#">
-    <input type="hidden" name="_csrf" value="<?= Csrf::getToken(); ?>">
-    <img src="/assets/images/logos/logo-dark.svg" class="mb-5 system-logo" alt="Logo-Dark" />
+    <?= Csrf::field(); ?>
+    <img src="./assets/images/logos/logo-dark.svg" class="mb-5 system-logo" alt="Logo-Dark" />
     <h2 class="mb-2 mt-4 fs-1 fw-bolder">Login to your account</h2>
     <p class="mb-10 fs-5">Enter your email below to login to your account</p>
-
     <div class="mb-3">
         <label for="email" class="form-label">Email</label>
         <input type="text" class="form-control" id="email" name="email" autocomplete="off">
     </div>
-
     <div class="mb-3">
         <label for="password" class="form-label">Password</label>
         <div class="position-relative mb-3">
@@ -20,12 +23,18 @@
             </span>
         </div>
     </div>
-
     <div class="d-flex flex-stack flex-wrap gap-3 fs-base fw-semibold mb-8">
-        <a href="/forgot-password" class="link-primary">Forgot Password?</a>
+        <a href="<?= Helpers::baseUrl('/account-security/forgot') ?>" class="link-primary">Forgot Password?</a>
     </div>
 
-    <div class="d-grid">
+    <div class="d-grid mb-10">
         <button id="signin" type="submit" class="btn btn-primary">Sign In</button>
+    </div>
+    <div class="text-gray-500 text-center fw-semibold fs-6">
+        Not a Member yet?
+
+        <a href="<?= Helpers::baseUrl('/register') ?>" class="link-primary">
+            Sign up
+        </a>
     </div>
 </form>

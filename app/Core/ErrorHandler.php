@@ -1,77 +1,85 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Core;
 
 /**
  * Class ErrorHandler
  * --------------------------------------------------------
- * Custom error and exception handler.
- * Logs all errors to storage/logs/app.log
- * Displays detailed errors in development mode.
+ * Centralized error and exception handler.
+ * Logs errors to storage/logs/app.log.
+ * Displays detailed errors if APP_DEBUG is true.
  * --------------------------------------------------------
  */
-class ErrorHandler
+final class ErrorHandler
 {
-    /**
-     * Register custom error and exception handlers
-     */
-    public function register(): void
+    // --------------------------------------------------------
+    // Register Handlers
+    // --------------------------------------------------------
+
+    public static function register(): void
     {
-        set_error_handler([$this, 'handleError']);
-        set_exception_handler([$this, 'handleException']);
-        register_shutdown_function([$this, 'handleShutdown']);
+        set_error_handler([self::class, 'handleError']);
+        set_exception_handler([self::class, 'handleException']);
+        register_shutdown_function([self::class, 'handleShutdown']);
     }
 
-    /**
-     * Handle PHP errors
-     */
-    public function handleError(int $errno, string $errstr, string $errfile, int $errline): void
-    {
-        $message = "[Error][$errno] $errstr in $errfile on line $errline";
-        $this->log($message);
+    // --------------------------------------------------------
+    // Error Handler
+    // --------------------------------------------------------
 
-        if ($_ENV['APP_DEBUG'] ?? false) {
-            echo nl2br($message);
-        }
+    public static function handleError(int $errno, string $errstr, string $errfile, int $errline): void
+    {
+        $message = sprintf('[Error][%d] %s in %s on line %d', $errno, $errstr, $errfile, $errline);
+        self::log($message);
+        self::display($message);
     }
 
-    /**
-     * Handle uncaught exceptions
-     */
-    public function handleException(\Throwable $exception): void
+    // --------------------------------------------------------
+    // Exception Handler
+    // --------------------------------------------------------
+
+    public static function handleException(\Throwable $exception): void
     {
-        $message = "[Exception][" . get_class($exception) . "] "
-            . $exception->getMessage()
-            . " in " . $exception->getFile()
-            . " on line " . $exception->getLine();
+        $message = sprintf(
+            '[Exception][%s] %s in %s on line %d',
+            get_class($exception),
+            $exception->getMessage(),
+            $exception->getFile(),
+            $exception->getLine()
+        );
 
-        $this->log($message);
-
-        if ($_ENV['APP_DEBUG'] ?? false) {
-            echo nl2br($message);
-        }
+        self::log($message);
+        self::display($message);
     }
 
-    /**
-     * Handle fatal errors on shutdown
-     */
-    public function handleShutdown(): void
+    // --------------------------------------------------------
+    // Shutdown Handler
+    // --------------------------------------------------------
+
+    public static function handleShutdown(): void
     {
         $error = error_get_last();
-        if ($error) {
-            $message = "[Shutdown][{$error['type']}] {$error['message']} in {$error['file']} on line {$error['line']}";
-            $this->log($message);
+        if ($error !== null) {
+            $message = sprintf(
+                '[Shutdown][%d] %s in %s on line %d',
+                $error['type'],
+                $error['message'],
+                $error['file'],
+                $error['line']
+            );
 
-            if ($_ENV['APP_DEBUG'] ?? false) {
-                echo nl2br($message);
-            }
+            self::log($message);
+            self::display($message);
         }
     }
 
-    /**
-     * Log message to storage/logs/app.log
-     */
-    protected function log(string $message): void
+    // --------------------------------------------------------
+    // Logging
+    // --------------------------------------------------------
+
+    private static function log(string $message): void
     {
         $logDir = dirname(__DIR__, 2) . '/storage/logs';
         if (!is_dir($logDir)) {
@@ -79,7 +87,19 @@ class ErrorHandler
         }
 
         $logFile = $logDir . '/app.log';
-        $date = date('Y-m-d H:i:s');
-        file_put_contents($logFile, "[$date] $message" . PHP_EOL, FILE_APPEND);
+        $date    = date('Y-m-d H:i:s');
+
+        file_put_contents($logFile, sprintf("[%s] %s%s", $date, $message, PHP_EOL), FILE_APPEND);
+    }
+
+    // --------------------------------------------------------
+    // Display Error (for debugging only)
+    // --------------------------------------------------------
+
+    private static function display(string $message): void
+    {
+        if (filter_var($_ENV['APP_DEBUG'] ?? 'true', FILTER_VALIDATE_BOOLEAN)) {
+            echo nl2br(htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
+        }
     }
 }

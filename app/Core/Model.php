@@ -1,96 +1,54 @@
 <?php
 
-namespace App\Core;
+declare(strict_types=1);
 
-use PDO;
-use PDOStatement;
-use PDOException;
+namespace App\Core;
 
 /**
  * Class Model
  * --------------------------------------------------------
- * Base abstract Model class.
- * Provides low-level database helpers + generic CRUD.
- * Extend this class for specific models.
+ * Base model providing stored procedure helpers.
  * --------------------------------------------------------
  */
 abstract class Model
 {
-    /**
-     * @var PDO Active PDO database connection
-     */
-    protected PDO $db;
+    protected Database $db;
 
     /**
-     * @var string Table name for CRUD operations
-     */
-    protected string $table = '';
-
-    /**
-     * Model constructor.
+     * Model constructor
      *
-     * Initializes the PDO database connection using Database singleton.
+     * @param Database|null $database Optional Database instance for testing/flexibility
      */
-    public function __construct()
+    public function __construct(?Database $database = null)
     {
-        $this->db = Database::getInstance();
+        $this->db = $database ?? Database::getInstance();
+    }
+
+    // --------------------------------------------------------
+    // Stored Procedure Helpers
+    // --------------------------------------------------------
+
+    /**
+     * Call a stored procedure and return multiple rows
+     */
+    protected function sp(string $procedure, array $params = []): array
+    {
+        return $this->db->callProcedure($procedure, $params);
     }
 
     /**
-     * Low-level query executor with logging.
-     *
-     * @param string $query  SQL query
-     * @param array  $params Params to bind
-     *
-     * @return PDOStatement|false
+     * Call a stored procedure and return a single row
      */
-    protected function query(string $query, array $params = [])
+    protected function spRow(string $procedure, array $params = []): ?array
     {
-        try {
-            $stmt = $this->db->prepare($query);
-
-            // Log query with masked parameters for debugging
-            error_log('Executing query: ' . $this->maskQuery($query, $params));
-
-            $stmt->execute($params);
-            return $stmt;
-
-        } catch (PDOException $e) {
-            error_log('DB Query Error: ' . $e->getMessage());
-            return false;
-        }
+        return $this->db->callProcedureRow($procedure, $params);
     }
 
     /**
-     * Fetch multiple rows.
+     * Call a stored procedure and return a single scalar value
      */
-    protected function fetchAll(string $query, array $params = []): array
+    protected function spValue(string $procedure, array $params = []): mixed
     {
-        $stmt = $this->query($query, $params);
-        return $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
-    }
-
-    /**
-     * Fetch single row.
-     */
-    protected function fetch(string $query, array $params = []): ?array
-    {
-        $stmt   = $this->query($query, $params);
-        $result = $stmt ? $stmt->fetch(PDO::FETCH_ASSOC) : null;
-
-        return $result !== false ? $result : null;
-    }
-
-    /**
-     * Mask parameters when logging SQL for debugging.
-     */
-    private function maskQuery(string $query, array $params): string
-    {
-        foreach ($params as $key => $value) {
-            $mask = is_numeric($value) ? '[NUM]' : '[STR]';
-            $placeholder = is_int($key) ? '?' : ":$key";
-            $query = str_replace($placeholder, $mask, $query);
-        }
-        return $query;
+        return $this->db->callProcedureValue($procedure, $params);
     }
 }

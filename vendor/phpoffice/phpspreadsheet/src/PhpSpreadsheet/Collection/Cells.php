@@ -44,25 +44,6 @@ class Cells
     private array $index = [];
 
     /**
-     * Flag to avoid sorting the index every time.
-     */
-    private bool $indexSorted = false;
-
-    /**
-     * Index keys cache to avoid recalculating on large arrays.
-     *
-     * @var null|string[]
-     */
-    private ?array $indexKeysCache = null;
-
-    /**
-     * Index values cache to avoid recalculating on large arrays.
-     *
-     * @var null|int[]
-     */
-    private ?array $indexValuesCache = null;
-
-    /**
      * Prefix used to uniquely identify cache data for this worksheet.
      */
     private string $cachePrefix;
@@ -100,11 +81,6 @@ class Cells
         return ($cellCoordinate === $this->currentCoordinate) || isset($this->index[$cellCoordinate]);
     }
 
-    public function has2(string $cellCoordinate): bool
-    {
-        return isset($this->index[$cellCoordinate]);
-    }
-
     /**
      * Add or update a cell in the collection.
      *
@@ -131,10 +107,6 @@ class Cells
 
         unset($this->index[$cellCoordinate]);
 
-        // Clear index caches
-        $this->indexKeysCache = null;
-        $this->indexValuesCache = null;
-
         // Delete the entry from cache
         $this->cache->delete($this->cachePrefix . $cellCoordinate);
     }
@@ -146,12 +118,7 @@ class Cells
      */
     public function getCoordinates(): array
     {
-        // Build or rebuild index keys cache
-        if ($this->indexKeysCache === null) {
-            $this->indexKeysCache = array_keys($this->index);
-        }
-
-        return $this->indexKeysCache;
+        return array_keys($this->index);
     }
 
     /**
@@ -161,21 +128,9 @@ class Cells
      */
     public function getSortedCoordinates(): array
     {
-        // Sort only when required
-        if (!$this->indexSorted) {
-            asort($this->index);
-            $this->indexSorted = true;
-            // Clear unsorted cache
-            $this->indexKeysCache = null;
-            $this->indexValuesCache = null;
-        }
+        asort($this->index);
 
-        // Build or rebuild index keys cache
-        if ($this->indexKeysCache === null) {
-            $this->indexKeysCache = array_keys($this->index);
-        }
-
-        return $this->indexKeysCache;
+        return array_keys($this->index);
     }
 
     /**
@@ -185,19 +140,9 @@ class Cells
      */
     public function getSortedCoordinatesInt(): array
     {
-        if (!$this->indexSorted) {
-            asort($this->index);
-            $this->indexSorted = true;
-            // Clear unsorted cache
-            $this->indexKeysCache = null;
-            $this->indexValuesCache = null;
-        }
+        asort($this->index);
 
-        if ($this->indexValuesCache === null) {
-            $this->indexValuesCache = array_values($this->index);
-        }
-
-        return $this->indexValuesCache;
+        return array_values($this->index);
     }
 
     /**
@@ -235,7 +180,7 @@ class Cells
     /**
      * Get highest worksheet column and highest row that have cell records.
      *
-     * @return array{row: int, column: string} Highest column name and highest row number
+     * @return array Highest column name and highest row number
      */
     public function getHighestRowAndColumn(): array
     {
@@ -350,11 +295,6 @@ class Cells
             }
         }
 
-        // Clear index sorted flag and index caches
-        $newCollection->indexSorted = false;
-        $newCollection->indexKeysCache = null;
-        $newCollection->indexValuesCache = null;
-
         return $newCollection;
     }
 
@@ -442,13 +382,7 @@ class Cells
         $column = 0;
         $row = '';
         sscanf($cellCoordinate, '%[A-Z]%d', $column, $row);
-        /** @var int $row */
         $this->index[$cellCoordinate] = (--$row * self::MAX_COLUMN_ID) + Coordinate::columnIndexFromString((string) $column);
-
-        // Clear index sorted flag and index caches
-        $this->indexSorted = false;
-        $this->indexKeysCache = null;
-        $this->indexValuesCache = null;
 
         $this->currentCoordinate = $cellCoordinate;
         $this->currentCell = $cell;
@@ -503,11 +437,6 @@ class Cells
         $this->__destruct();
 
         $this->index = [];
-
-        // Clear index sorted flag and index caches
-        $this->indexSorted = false;
-        $this->indexKeysCache = null;
-        $this->indexValuesCache = null;
 
         // detach ourself from the worksheet, so that it can then delete this object successfully
         $this->parent = null;

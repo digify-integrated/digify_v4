@@ -1,70 +1,88 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Core;
 
+/**
+ * Class Controller
+ * --------------------------------------------------------
+ * Base controller providing helpers for:
+ * - Views
+ * - JSON responses
+ * - Redirects
+ * --------------------------------------------------------
+ */
 class Controller
 {
+    protected Response $response;
+
     /**
-     * Render a view with optional layout support
+     * Controller constructor
+     */
+    public function __construct(?Response $response = null)
+    {
+        $this->response = $response ?? new Response();
+    }
+
+    // --------------------------------------------------------
+    // View Rendering
+    // --------------------------------------------------------
+
+    /**
+     * Render a view with optional layout
      *
      * Usage:
-     *   return $this->view('auth/login', [], 'auth-layout');
-     *   return $this->view('dashboard/index'); // no layout
-     *
-     * @param string $view   View file path (relative to resources/views/)
-     * @param array  $data   Data to be extracted into the view
-     * @param string|null $layout  Layout file name (inside resources/views/layouts/)
-     *
-     * @return void
+     *   $this->view('auth/login', [], 'auth-layout');
+     *   $this->view('dashboard/index'); // no layout
      */
     protected function view(string $view, array $data = [], ?string $layout = null): void
     {
-        extract($data);
-
-        $basePath = dirname(__DIR__, 2) . "/resources/views";
-
-        $viewPath = $basePath . "/{$view}.php";
+        $basePath = dirname(__DIR__, 2) . '/resources/views';
+        $viewPath = "{$basePath}/{$view}.php";
 
         if (!file_exists($viewPath)) {
-            throw new \Exception("View '{$view}' not found at {$viewPath}");
+            $this->response->setStatusCode(500)
+                           ->text("View '{$view}' not found at {$viewPath}");
+            return;
         }
 
-        // If no layout → load view directly
+        extract($data, EXTR_SKIP);
+
         if ($layout === null) {
             require $viewPath;
             return;
         }
 
-        // Layout mode: capture view output
         ob_start();
         require $viewPath;
         $content = ob_get_clean();
 
-        // Load layout file
-        $layoutPath = $basePath . "/layouts/{$layout}.php";
-
+        $layoutPath = "{$basePath}/layouts/{$layout}.php";
         if (!file_exists($layoutPath)) {
-            throw new \Exception("Layout '{$layout}' not found at {$layoutPath}");
+            $this->response->setStatusCode(500)
+                           ->text("Layout '{$layout}' not found at {$layoutPath}");
+            return;
         }
 
         require $layoutPath;
     }
 
-    /**
-     * Return JSON response
-     */
-    protected function json(array $data): void
+    // --------------------------------------------------------
+    // JSON Response
+    // --------------------------------------------------------
+
+    protected function json(array $data, ?int $statusCode = null): void
     {
-        header('Content-Type: application/json');
-        echo json_encode($data);
+        $this->response->json($data, $statusCode ?? 200);
     }
 
-    /**
-     * Redirect to another URL
-     */
-    protected function redirect(string $url): void
+    // --------------------------------------------------------
+    // Redirect
+    // --------------------------------------------------------
+
+    protected function redirect(string $url, int $statusCode = 302): void
     {
-        header("Location: $url");
-        exit;
+        $this->response->redirect($url, $statusCode);
     }
 }

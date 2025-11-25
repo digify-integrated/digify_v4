@@ -1,26 +1,32 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Middleware;
 
-class CsrfMiddleware
+use App\Core\Request;
+use App\Core\Response;
+use App\Core\Csrf;
+
+final class CsrfMiddleware implements MiddlewareInterface
 {
-    public function handle($request, $response, $next)
+    /**
+     * Handle the incoming request and validate CSRF token for POST requests.
+     */
+    public function handle(Request $request, Response $response, callable $next): void
     {
-        session_start();
+        // Only validate state-changing requests (POST, PUT, PATCH, DELETE)
+        if (in_array($request->method(), ['post', 'put', 'patch', 'delete'], true)) {
+            $token = $request->input('_csrf', null);
 
-        // Only validate POST
-        if ($request->method() === 'POST') {
-
-            $token = $_POST['_csrf'] ?? null;                 // form field
-            $sessionToken = $_SESSION['csrf_token'] ?? null;  // FIXED name
-
-            if (!$token || !$sessionToken || !hash_equals($sessionToken, $token)) {
-                $response->setStatusCode(403);
-                echo "CSRF validation failed.";
-                return; // Stop execution
+            if (!Csrf::validateToken($token)) {
+                $response->setStatusCode(403)
+                         ->text('CSRF validation failed.');
+                return; // Stop further execution
             }
         }
 
-        return $next(); // Continue to next middleware or route handler
+        // Continue to next middleware or route handler
+        $next();
     }
 }

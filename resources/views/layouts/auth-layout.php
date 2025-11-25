@@ -1,3 +1,5 @@
+<?php use App\Core\Helpers; ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -19,13 +21,13 @@
             </div>
         </div>
         
-        <div class="d-flex flex-lg-row-fluid w-lg-50 bgi-size-cover bgi-position-center order-1 order-lg-2" style="background-image: url(././assets/images/background/login-bg.jpg);">
+        <div class="d-flex flex-lg-row-fluid w-lg-50 bgi-size-cover bgi-position-center order-1 order-lg-2" style="background-image: url('<?= \App\Core\Helpers::baseUrl('assets/images/background/login-bg.jpg') ?>');">
         </div>
     </div>
 
     <?php require_once __DIR__ . '/../partials/error-modal.php'; ?>
     <?php require_once __DIR__ . '/../partials/required-js.php'; ?>
 
-    <script type="module" src="./assets/js/auth/login.js?v=<?= rand(); ?>"></script>
+    <?= Helpers::js('assets/js/auth/login.js', true, true) ?>
 </body>
 </html>

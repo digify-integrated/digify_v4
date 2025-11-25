@@ -1,5 +1,9 @@
 <?php
 
+declare(strict_types=1);
+
+use App\Core\Config;
+
 return [
 
     /*
@@ -7,36 +11,35 @@ return [
     | Application Name
     |--------------------------------------------------------------------------
     */
-    'name' => $_ENV['APP_NAME'] ?? 'Digify',
+    'name' => Config::env('APP_NAME', 'Digify'),
 
     /*
     |--------------------------------------------------------------------------
     | Application Environment
-    |--------------------------------------------------------------------------
     | Options: local, production, staging
+    |--------------------------------------------------------------------------
     */
-    'env' => $_ENV['APP_ENV'] ?? 'local',
+    'env' => Config::env('APP_ENV', 'local'),
 
     /*
     |--------------------------------------------------------------------------
     | Application Debug Mode
     |--------------------------------------------------------------------------
-    | When true, detailed error messages will be shown
+    | Converts all values ("true", "1", true) → bool
     */
-    'debug' => filter_var($_ENV['APP_DEBUG'] ?? true, FILTER_VALIDATE_BOOLEAN),
+    'debug' => Config::bool('APP_DEBUG', true),
 
     /*
     |--------------------------------------------------------------------------
     | Application Base URL
     |--------------------------------------------------------------------------
     */
-    'url' => $_ENV['APP_URL'] ?? 'http://localhost/digify_v4',
+    'url' => Config::env('APP_URL', 'http://localhost/digify_v4'),
 
     /*
     |--------------------------------------------------------------------------
     | Default Timezone
     |--------------------------------------------------------------------------
     */
-    'timezone' => $_ENV['APP_TIMEZONE'] ?? 'Asia/Manila',
-
+    'timezone' => Config::env('APP_TIMEZONE', 'Asia/Manila'),
 ];

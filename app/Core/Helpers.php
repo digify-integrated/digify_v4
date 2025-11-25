@@ -1,72 +1,154 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Core;
 
 /**
  * Class Helpers
  * --------------------------------------------------------
- * Global helper functions for common tasks.
- * You can add more helpers here as your project grows.
+ * Global helper functions for common tasks:
+ * - URL & asset management
+ * - CSRF helpers
+ * - File uploads
+ * - Logging & debugging
  * --------------------------------------------------------
  */
-class Helpers
+final class Helpers
 {
-    /**
-     * Generate a URL based on base path
-     *
-     * @param string $path
-     * @return string
-     */
+    // --------------------------------------------------------
+    // URL HELPERS
+    // --------------------------------------------------------
+
     public static function url(string $path = ''): string
     {
-        $baseUrl = $_ENV['APP_URL'] ?? '';
-        $path = ltrim($path, '/');
-        return rtrim($baseUrl, '/') . '/' . $path;
+        $baseUrl = $_ENV['APP_URL'] ?? 'http://localhost';
+        return rtrim($baseUrl, '/') . '/' . ltrim($path, '/');
     }
 
-    /**
-     * Escape output for HTML
-     *
-     * @param string $string
-     * @return string
-     */
     public static function e(string $string): string
     {
-        return htmlspecialchars($string, ENT_QUOTES, 'UTF-8');
+        return htmlspecialchars($string, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     }
 
-    /**
-     * Dump and die (for debugging)
-     *
-     * @param mixed $data
-     */
-    public static function dd($data): void
+    public static function redirect(string $path): void
     {
-        echo '<pre>';
-        var_dump($data);
-        echo '</pre>';
-        die;
-    }
-
-    /**
-     * Simple redirect helper
-     *
-     * @param string $url
-     */
-    public static function redirect(string $url): void
-    {
-        header("Location: $url");
+        header('Location: ' . self::url($path));
         exit;
+    }
+
+    // --------------------------------------------------------
+    // ASSET HELPERS
+    // --------------------------------------------------------
+
+    public static function asset(string $path): string
+    {
+        return self::baseUrl(ltrim($path, '/'));
+    }
+
+    public static function css(string $path, bool $cacheBust = false, bool $echo = true): ?string
+    {
+        $url = self::asset($path);
+        if ($cacheBust) {
+            $url .= '?v=' . rand();
+        }
+        $tag = '<link href="' . $url . '" rel="stylesheet" type="text/css">';
+
+        if ($echo) {
+            echo $tag;
+            return null;
+        }
+
+        return $tag;
+    }
+
+    public static function js(string $path, bool $cacheBust = false, bool $module = false, bool $echo = true): ?string
+    {
+        $url = self::asset($path);
+        if ($cacheBust) {
+            $url .= '?v=' . rand();
+        }
+        $type = $module ? ' type="module"' : '';
+        $tag = "<script src=\"$url\"$type></script>";
+
+        if ($echo) {
+            echo $tag;
+            return null;
+        }
+
+        return $tag;
     }
 
     public static function baseUrl(string $path = ''): string
     {
-        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
-        $host = $_SERVER['HTTP_HOST'];
-
-        // This auto-detects your app folder (e.g., /digify_v4)
-        $scriptDir = str_replace('/index.php', '', $_SERVER['SCRIPT_NAME']);
-
+        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $scriptDir = str_replace('/index.php', '', $_SERVER['SCRIPT_NAME'] ?? '');
         return rtrim($protocol . $host . $scriptDir, '/') . '/' . ltrim($path, '/');
+    }
+
+    // --------------------------------------------------------
+    // CSRF HELPERS
+    // --------------------------------------------------------
+
+    public static function csrfToken(): string
+    {
+        return Csrf::getToken();
+    }
+
+    public static function validateCsrf(?string $token): bool
+    {
+        return Csrf::validateToken($token);
+    }
+
+    public static function csrfField(): string
+    {
+        return Csrf::field();
+    }
+
+    // --------------------------------------------------------
+    // FILE UPLOAD
+    // --------------------------------------------------------
+
+    public static function upload(array $file, string $folder = ''): ?string
+    {
+        $uploadDir = __DIR__ . '/../../storage/uploads/' . trim($folder, '/');
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+
+        $filename = basename($file['name']);
+        $filename = preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $filename);
+        $targetPath = $uploadDir . '/' . $filename;
+
+        if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+            return 'storage/uploads/' . ($folder ? $folder . '/' : '') . $filename;
+        }
+
+        return null;
+    }
+
+    // --------------------------------------------------------
+    // LOGGING & DEBUG
+    // --------------------------------------------------------
+
+    public static function log(string $message, string $level = 'info'): void
+    {
+        $logDir = __DIR__ . '/../../storage/logs';
+        if (!is_dir($logDir)) {
+            mkdir($logDir, 0755, true);
+        }
+
+        $date = date('Y-m-d H:i:s');
+        $file = $logDir . '/app.log';
+        file_put_contents($file, "[$date][$level] $message" . PHP_EOL, FILE_APPEND);
+    }
+
+    public static function dd(mixed $data): void
+    {
+        echo '<pre style="background:#f4f4f4;padding:10px;border-radius:5px;">';
+        var_dump($data);
+        echo '</pre>';
+        exit;
     }
 }

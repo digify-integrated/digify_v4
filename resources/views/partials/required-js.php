@@ -1,10 +1,11 @@
-<script src="<?= \App\Core\Helpers::baseUrl('vendor/global/plugins.bundle.js?v=' . rand()) ?>"></script>
-<script src="<?= \App\Core\Helpers::baseUrl('assets/js/scripts.bundle.js?v=' . rand()) ?>"></script>
+<?php use App\Core\Helpers; ?>
 
-<script src="<?= \App\Core\Helpers::baseUrl('vendor/bootstrap-duallistbox/dist/jquery.bootstrap-duallistbox.min.js') ?>"></script>
+<!-- Core Vendor JS -->
+<?= Helpers::js('vendor/global/plugins.bundle.js', true) ?>
+<?= Helpers::js('assets/js/scripts.bundle.js', true) ?>
 
-<script src="<?= \App\Core\Helpers::baseUrl('vendor/jquery-validation/dist/jquery.validate.min.js') ?>"></script>
-<script src="<?= \App\Core\Helpers::baseUrl('vendor/jquery-validation/validation/form-validation-rules.js?v=' . rand()) ?>"></script>
-
-<!-- ES Module -->
-<script type="module" src="<?= \App\Core\Helpers::baseUrl('assets/js/app.js?v=' . rand()) ?>"></script>
+<!-- Plugin JS -->
+<?= Helpers::js('vendor/bootstrap-duallistbox/dist/jquery.bootstrap-duallistbox.min.js', true) ?>
+<?= Helpers::js('vendor/jquery-validation/dist/jquery.validate.min.js', true) ?>
+<?= Helpers::js('vendor/jquery-validation/validation/form-validation-rules.js', true) ?>
+<?= Helpers::js('assets/js/app.js', true, true) ?>

@@ -1,35 +1,68 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controllers;
 
 use App\Core\Controller;
 use App\Core\Database;
 use App\Core\Helpers;
 
+/**
+ * Class AuthController
+ * --------------------------------------------------------
+ * Handles authentication-related actions:
+ * - Login
+ * - Registration
+ * - Example dynamic route
+ * --------------------------------------------------------
+ */
 class AuthController extends Controller
 {
-    protected $db;
-    protected $helpers;
+    protected Database $db;
 
     public function __construct()
     {
+        parent::__construct();
+
         $this->db = Database::getInstance();
-        $this->helpers = new Helpers();
-        session_start();
-    }
-    
-    public function index()
-    {
-        return $this->view('auth/login', [], 'auth-layout');
+
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_start();
+        }
     }
 
-    public function register()
+    /**
+     * Show login page
+     */
+    public function index(): void
     {
-        return $this->view('auth/register');
+        $this->view('auth/login', [], 'auth-layout');
     }
 
-    public function test($id)
+    /**
+     * Show forgot password page
+     */
+    public function forgot(): void
     {
-        return $id;
+        $this->view('auth/forgot', ['title' => 'Forgot Password'], 'auth-layout');
+    }
+
+    /**
+     * Show registration page
+     */
+    public function register(): void
+    {
+        $this->view('auth/register', ['title' => 'Register'], 'auth-layout');
+    }
+
+    /**
+     * Example route with a dynamic parameter
+     *
+     * @param string|int $id
+     */
+    public function test(string|int $id): void
+    {
+        echo Helpers::e((string)$id);
     }
 }

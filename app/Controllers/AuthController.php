@@ -27,4 +27,9 @@ class AuthController extends Controller
     {
         return $this->view('auth/register');
     }
+
+    public function test($id)
+    {
+        return $id;
+    }
 }

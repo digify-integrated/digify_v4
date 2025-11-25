@@ -6,121 +6,123 @@ use App\Core\Request;
 use App\Core\Response;
 
 /**
- * Class Router
- * --------------------------------------------------------
- * Handles route registration, matching, and dispatching.
- * Supports dynamic routes like /users/{id}.
- * --------------------------------------------------------
+ * Enhanced Router with:
+ * - Route-specific middleware
+ * - Global middleware
+ * - Grouped routes (prefix + shared middleware)
  */
 class Router
 {
     protected Request $request;
     protected Response $response;
 
-    /**
-     * Route storage: ['get' => [...], 'post' => [...]]
-     *
-     * @var array
-     */
     protected array $routes = [
         'get' => [],
         'post' => []
     ];
 
-    protected array $middleware = [];
+    protected array $globalMiddleware = [];
+    protected array $currentGroup = [];
 
-    /**
-     * Router Constructor
-     */
     public function __construct(Request $request, Response $response)
     {
         $this->request  = $request;
         $this->response = $response;
     }
 
-    /**
-     * Register GET route
-     *
-     * @param string $path
-     * @param callable|string $handler
-     * @return self
-     */
-    public function get(string $path, $handler): self
+    // ----------------------------------------
+    // Route Registration
+    // ----------------------------------------
+
+    public function get(string $path, $handler)
     {
-        $this->routes['get'][$path] = $handler;
-        return $this;
+        return $this->addRoute('get', $path, $handler);
     }
 
-    /**
-     * Register POST route
-     *
-     * @param string $path
-     * @param callable|string $handler
-     * @return self
-     */
-    public function post(string $path, $handler): self
+    public function post(string $path, $handler)
     {
-        $this->routes['post'][$path] = $handler;
-        return $this;
+        return $this->addRoute('post', $path, $handler);
     }
 
-    /**
-     * Resolve and dispatch current route
-     */
+    protected function addRoute(string $method, string $path, $handler)
+    {
+        // Apply prefix if within a group
+        if (!empty($this->currentGroup['prefix'])) {
+            $path = rtrim($this->currentGroup['prefix'], '/') . '/' . ltrim($path, '/');
+        }
+
+        $this->routes[$method][$path] = [
+            'handler'    => $handler,
+            'middleware' => $this->currentGroup['middleware'] ?? [],
+        ];
+
+        return new RouteConfig($this->routes[$method][$path]);
+    }
+
+    // ----------------------------------------
+    // Route Groups
+    // ----------------------------------------
+
+    public function group(array $config, callable $callback)
+    {
+        $previousGroup = $this->currentGroup;
+
+        $this->currentGroup = [
+            'prefix'     => $config['prefix']     ?? ($previousGroup['prefix'] ?? ''),
+            'middleware' => $config['middleware'] ?? ($previousGroup['middleware'] ?? []),
+        ];
+
+        $callback($this);
+
+        $this->currentGroup = $previousGroup;
+    }
+
+    // ----------------------------------------
+    // Global Middleware
+    // ----------------------------------------
+
+    public function addGlobalMiddleware(string $middleware)
+    {
+        $this->globalMiddleware[] = $middleware;
+    }
+
+    // ----------------------------------------
+    // Route Resolution
+    // ----------------------------------------
+
     public function resolve(): void
     {
         $method = $this->request->method();
         $currentPath = $this->request->path();
 
-        // First check static routes
-        if (isset($this->routes[$method][$currentPath])) {
-            $handler = $this->routes[$method][$currentPath];
-            $this->executeHandler($handler);
-            return;
-        }
-
-        // Check dynamic routes
-        foreach ($this->routes[$method] as $route => $handler) {
+        foreach ($this->routes[$method] ?? [] as $route => $config) {
             $pattern = $this->convertToRegex($route);
+
             if (preg_match($pattern, $currentPath, $matches)) {
-                array_shift($matches); // remove full match
-                $this->executeHandler($handler, $matches);
+                array_shift($matches);
+                $this->dispatch($config, $matches);
                 return;
             }
         }
 
-        // No route found -> 404
         $this->response->setStatusCode(404);
         echo "404 - Page Not Found";
     }
 
-    /**
-     * Convert route definitions like /users/{id}
-     * into regex patterns.
-     */
-    protected function convertToRegex(string $route): string
-    {
-        $pattern = preg_replace('#\{([^}]+)\}#', '([^/]+)', $route);
-        return '#^' . $pattern . '$#';
-    }
+    // ----------------------------------------
+    // Dispatch With Middleware
+    // ----------------------------------------
 
-    /**
-     * Execute controller or closure
-     *
-     * @param mixed $handler
-     * @param array $params
-     */
-    protected function executeHandler($handler, array $params = []): void
+    protected function dispatch(array $routeConfig, array $params)
     {
-        // Define the final controller execution
+        $handler = $routeConfig['handler'];
+
         $controllerExecution = function () use ($handler, $params) {
-            // Case 1: closure function
             if (is_callable($handler)) {
                 echo call_user_func_array($handler, $params);
                 return;
             }
 
-            // Case 2: Controller@method string
             if (is_string($handler)) {
                 [$controllerName, $method] = explode('@', $handler);
 
@@ -139,35 +141,54 @@ class Router
                 echo call_user_func_array([$controller, $method], $params);
                 return;
             }
-
-            throw new \Exception("Invalid route handler type.");
         };
 
-        // If no middleware defined, just execute controller/closure
-        if (empty($this->middleware)) {
-            $controllerExecution();
-            return;
-        }
+        // Merge global + route middleware
+        $middlewareStack = array_merge(
+            $this->globalMiddleware,
+            $routeConfig['middleware'] ?? []
+        );
 
-        // Wrap middleware stack
         $next = $controllerExecution;
-        $stack = array_reverse($this->middleware);
 
-        foreach ($stack as $middlewareClass) {
-            $middlewareInstance = new $middlewareClass();
-
-            // Wrap the current $next into middleware handle
-            $next = fn() => $middlewareInstance->handle($this->request, $this->response, $next);
+        foreach (array_reverse($middlewareStack) as $middlewareClass) {
+            $instance = new $middlewareClass;
+            $next = fn() => $instance->handle($this->request, $this->response, $next);
         }
 
-        // Execute middleware stack + final controller
         $next();
     }
 
-    // Method to attach middleware to a route
-    public function middleware(string|array $middlewares): self
+    // ----------------------------------------
+    // Helpers
+    // ----------------------------------------
+
+    protected function convertToRegex(string $route): string
     {
-        $this->middleware = is_array($middlewares) ? $middlewares : [$middlewares];
+        $pattern = preg_replace('#\{([^}]+)\}#', '([^/]+)', $route);
+        return '#^' . $pattern . '$#';
+    }
+}
+
+/**
+ * Allows chaining ->middleware()
+ */
+class RouteConfig
+{
+    public array $route;
+
+    public function __construct(array &$route)
+    {
+        $this->route = &$route;
+    }
+
+    public function middleware(string|array $middleware): self
+    {
+        $this->route['middleware'] = array_merge(
+            $this->route['middleware'],
+            is_array($middleware) ? $middleware : [$middleware]
+        );
+
         return $this;
     }
 }

@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <?php 
         require_once __DIR__ . '/../partials/head-meta-tags.php';
@@ -24,6 +23,7 @@
         </div>
     </div>
 
+    <?php require_once __DIR__ . '/../partials/error-modal.php'; ?>
     <?php require_once __DIR__ . '/../partials/required-js.php'; ?>
 
     <script type="module" src="./assets/js/auth/login.js?v=<?= rand(); ?>"></script>

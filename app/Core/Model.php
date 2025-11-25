@@ -82,66 +82,6 @@ abstract class Model
     }
 
     /**
-     * ------------------------
-     * GENERIC CRUD OPERATIONS
-     * ------------------------
-     */
-
-    /**
-     * Get all rows from table
-     */
-    public function all(): array
-    {
-        return $this->fetchAll("SELECT * FROM {$this->table}");
-    }
-
-    /**
-     * Find row by ID
-     */
-    public function find(int $id): ?array
-    {
-        return $this->fetch(
-            "SELECT * FROM {$this->table} WHERE id = :id LIMIT 1",
-            ['id' => $id]
-        );
-    }
-
-    /**
-     * Insert new record
-     */
-    public function create(array $data): bool
-    {
-        $columns = implode(",", array_keys($data));
-        $placeholders = ":" . implode(",:", array_keys($data));
-
-        $sql = "INSERT INTO {$this->table} ($columns) VALUES ($placeholders)";
-        return $this->query($sql, $data) !== false;
-    }
-
-    /**
-     * Update record by ID
-     */
-    public function update(int $id, array $data): bool
-    {
-        $setStr = implode(',', array_map(fn($key) => "$key = :$key", array_keys($data)));
-        $data['id'] = $id;
-
-        $sql = "UPDATE {$this->table} SET $setStr WHERE id = :id";
-        return $this->query($sql, $data) !== false;
-    }
-
-    /**
-     * Delete record by ID
-     */
-    public function delete(int $id): bool
-    {
-        return $this->query(
-            "DELETE FROM {$this->table} WHERE id = :id",
-            ['id' => $id]
-        ) !== false;
-    }
-
-    /**
      * Mask parameters when logging SQL for debugging.
      */
     private function maskQuery(string $query, array $params): string

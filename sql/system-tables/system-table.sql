@@ -5,8 +5,8 @@
 DROP TABLE IF EXISTS users;
 
 CREATE TABLE users (
-  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, 
-  tenant_id INT NOT NULL,
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  tenant_id INT UNSIGNED NOT NULL,
   email VARCHAR(255) NOT NULL UNIQUE,
   mobile VARCHAR(20) NOT NULL UNIQUE,
   password VARCHAR(255) NOT NULL,
@@ -150,6 +150,40 @@ CREATE INDEX idx_user_token_user_id ON user_token(user_id);
 
 /* =============================================================================================
   INITIAL VALUES: USER TOKENS
+============================================================================================= */
+
+/* =============================================================================================
+  END OF TABLE DEFINITIONS
+============================================================================================= */
+
+
+/* =============================================================================================
+  TABLE: AUDIT LOG
+============================================================================================= */
+
+DROP TABLE IF EXISTS audit_log;
+
+CREATE TABLE audit_log (
+  audit_log_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  table_name VARCHAR(100) NOT NULL,
+  reference_id INT NOT NULL,
+  log TEXT NOT NULL,
+  changed_by INT UNSIGNED DEFAULT 1,
+  changed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (changed_by) REFERENCES user_account(user_account_id)
+);
+
+/* =============================================================================================
+  INDEX: AUDIT LOG
+============================================================================================= */
+
+CREATE INDEX idx_audit_log_table_name ON audit_log(table_name);
+CREATE INDEX idx_audit_log_reference_id ON audit_log(reference_id);
+CREATE INDEX idx_audit_log_changed_by ON audit_log(changed_by);
+CREATE INDEX idx_audit_log_changed_at ON audit_log(changed_at);
+
+/* =============================================================================================
+  INITIAL VALUES: AUDIT LOG
 ============================================================================================= */
 
 /* =============================================================================================

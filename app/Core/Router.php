@@ -11,11 +11,11 @@ use Exception;
 /**
  * Class Router
  * --------------------------------------------------------
- * Handles HTTP routing with support for:
- * - Static and dynamic routes
- * - Route-specific middleware
+ * Handles HTTP routing:
+ * - Static & dynamic routes
+ * - Route groups with prefixes and middleware
  * - Global middleware
- * - Route groups with prefix and shared middleware
+ * - Custom 404 page
  * --------------------------------------------------------
  */
 final class Router
@@ -23,18 +23,18 @@ final class Router
     private Request $request;
     private Response $response;
 
-    /** @var array<string, array<string, array>> */
+    /** @var array<string, array<string, RouteConfig>> */
     private array $routes = [
         'get'    => [],
         'post'   => [],
         'put'    => [],
+        'patch'  => [],
         'delete' => [],
     ];
 
-    /** @var array<int, class-string> */
+    /** @var array<class-string> */
     private array $globalMiddleware = [];
 
-    /** @var array<string, mixed> */
     private array $currentGroup = [];
 
     public function __construct(Request $request, Response $response)
@@ -43,10 +43,9 @@ final class Router
         $this->response = $response;
     }
 
-    // --------------------------------------------------------
+    // ================================================================
     // Route Registration
-    // --------------------------------------------------------
-
+    // ================================================================
     public function get(string $path, callable|string|array $handler): RouteConfig
     {
         return $this->addRoute('get', $path, $handler);
@@ -62,6 +61,11 @@ final class Router
         return $this->addRoute('put', $path, $handler);
     }
 
+    public function patch(string $path, callable|string|array $handler): RouteConfig
+    {
+        return $this->addRoute('patch', $path, $handler);
+    }
+
     public function delete(string $path, callable|string|array $handler): RouteConfig
     {
         return $this->addRoute('delete', $path, $handler);
@@ -69,22 +73,24 @@ final class Router
 
     private function addRoute(string $method, string $path, callable|string|array $handler): RouteConfig
     {
+        // Apply group prefix
         if (!empty($this->currentGroup['prefix'])) {
             $path = rtrim($this->currentGroup['prefix'], '/') . '/' . ltrim($path, '/');
         }
 
-        $this->routes[$method][$path] = [
+        $config = new RouteConfig([
             'handler'    => $handler,
             'middleware' => $this->currentGroup['middleware'] ?? [],
-        ];
+        ]);
 
-        return new RouteConfig($this->routes[$method][$path]);
+        $this->routes[$method][$path] = $config;
+
+        return $config;
     }
 
-    // --------------------------------------------------------
+    // ================================================================
     // Route Groups
-    // --------------------------------------------------------
-
+    // ================================================================
     public function group(array $config, callable $callback): void
     {
         $previousGroup = $this->currentGroup;
@@ -99,47 +105,46 @@ final class Router
         $this->currentGroup = $previousGroup;
     }
 
-    // --------------------------------------------------------
+    // ================================================================
     // Global Middleware
-    // --------------------------------------------------------
-
+    // ================================================================
     public function addGlobalMiddleware(string $middlewareClass): void
     {
+        if (!class_exists($middlewareClass)) {
+            throw new Exception("Middleware class {$middlewareClass} does not exist.");
+        }
+
         $this->globalMiddleware[] = $middlewareClass;
     }
 
-    // --------------------------------------------------------
+    // ================================================================
     // Route Resolution
-    // --------------------------------------------------------
-
+    // ================================================================
     public function resolve(): void
     {
         $method      = $this->request->method();
         $currentPath = $this->request->path();
 
-        foreach ($this->routes[$method] ?? [] as $route => $config) {
-            if (preg_match($this->convertToRegex($route), $currentPath, $matches)) {
-                array_shift($matches);
+        foreach ($this->routes[$method] ?? [] as $routePattern => $config) {
+            if (preg_match($this->convertToRegex($routePattern), $currentPath, $matches)) {
+                array_shift($matches); // Remove full match
                 $this->dispatch($config, $matches);
                 return;
             }
         }
 
-        $this->response->setStatusCode(404)->send('404 - Page Not Found');
+        $this->render404();
     }
 
-    // --------------------------------------------------------
-    // Dispatch with Middleware
-    // --------------------------------------------------------
-
-    private function dispatch(array $routeConfig, array $params): void
+    // ================================================================
+    // Dispatch Route with Middleware
+    // ================================================================
+    private function dispatch(RouteConfig $routeConfig, array $params): void
     {
-        $handler = $routeConfig['handler'];
+        $handler = $routeConfig->getHandler();
+        $middlewareStack = array_merge($this->globalMiddleware, $routeConfig->getMiddleware());
 
-        $controllerExecution = function (): void {
-            $handler = func_get_arg(0);
-            $params  = func_get_arg(1);
-
+        $next = function () use ($handler, $params) {
             if (is_callable($handler)) {
                 echo call_user_func_array($handler, $params);
                 return;
@@ -150,13 +155,13 @@ final class Router
                 $controllerClass = "App\\Controllers\\$controllerName";
 
                 if (!class_exists($controllerClass)) {
-                    throw new Exception("Controller $controllerClass not found.");
+                    throw new Exception("Controller {$controllerClass} not found.");
                 }
 
                 $controller = new $controllerClass();
 
                 if (!method_exists($controller, $method)) {
-                    throw new Exception("Method $method not found in controller $controllerClass.");
+                    throw new Exception("Method {$method} not found in controller {$controllerClass}.");
                 }
 
                 echo call_user_func_array([$controller, $method], $params);
@@ -166,14 +171,8 @@ final class Router
             throw new Exception('Invalid route handler type.');
         };
 
-        $middlewareStack = array_merge($this->globalMiddleware, $routeConfig['middleware'] ?? []);
-        $next            = fn() => $controllerExecution($handler, $params);
-
+        // Apply middleware stack
         foreach (array_reverse($middlewareStack) as $middlewareClass) {
-            if (!class_exists($middlewareClass)) {
-                throw new Exception("Middleware $middlewareClass not found.");
-            }
-
             $instance = new $middlewareClass();
             $previousNext = $next;
             $next = fn() => $instance->handle($this->request, $this->response, $previousNext);
@@ -182,10 +181,26 @@ final class Router
         $next();
     }
 
-    // --------------------------------------------------------
-    // Helpers
-    // --------------------------------------------------------
+    // ================================================================
+    // Custom 404 Page
+    // ================================================================
+    private function render404(): void
+    {
+        $this->response->setStatusCode(404);
 
+        $viewPath = dirname(__DIR__, 2) . '/resources/views/error/404.php';
+
+        if (file_exists($viewPath)) {
+            include $viewPath;
+            return;
+        }
+
+        echo "<h1>404 - Page Not Found</h1>";
+    }
+
+    // ================================================================
+    // Helpers
+    // ================================================================
     private function convertToRegex(string $route): string
     {
         $pattern = preg_replace('#\{([^}]+)\}#', '([^/]+)', $route);
@@ -196,28 +211,32 @@ final class Router
 /**
  * Class RouteConfig
  * --------------------------------------------------------
- * Allows chaining ->middleware() on route definitions
+ * Stores route configuration and allows middleware chaining
  * --------------------------------------------------------
  */
 final class RouteConfig
 {
-    private array $route;
+    private array $config;
 
-    public function __construct(array $route)
+    public function __construct(array $config)
     {
-        $this->route = $route;
+        $this->config = $config;
     }
 
-    /**
-     * @param string|array $middleware
-     */
     public function middleware(string|array $middleware): self
     {
-        $this->route['middleware'] = array_merge(
-            $this->route['middleware'],
-            is_array($middleware) ? $middleware : [$middleware]
-        );
-
+        $middleware = is_array($middleware) ? $middleware : [$middleware];
+        $this->config['middleware'] = array_merge($this->config['middleware'] ?? [], $middleware);
         return $this;
+    }
+
+    public function getMiddleware(): array
+    {
+        return $this->config['middleware'] ?? [];
+    }
+
+    public function getHandler(): callable|string|array
+    {
+        return $this->config['handler'];
     }
 }

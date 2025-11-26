@@ -21,7 +21,7 @@
             </div>
         </div>
         
-        <div class="d-flex flex-lg-row-fluid w-lg-50 bgi-size-cover bgi-position-center order-1 order-lg-2" style="background-image: url('<?= \App\Core\Helpers::baseUrl('assets/images/background/login-bg.jpg') ?>');">
+        <div class="d-flex flex-lg-row-fluid w-lg-50 bgi-size-cover bgi-position-center order-1 order-lg-2" style="background-image: url('<?= Helpers::baseUrl('assets/images/background/login-bg.jpg') ?>');">
         </div>
     </div>
 

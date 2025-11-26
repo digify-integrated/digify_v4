@@ -17,3 +17,33 @@
 [2025-11-25 02:07:18] [Exception][Exception] Database connection failed: SQLSTATE[HY000] [1049] Unknown database 'digifydb' in C:\xampp\htdocs\digify_v4\app\Core\Database.php on line 41
 [2025-11-25 02:07:29] [Exception][Exception] Database connection failed: SQLSTATE[HY000] [1049] Unknown database 'digifydb' in C:\xampp\htdocs\digify_v4\app\Core\Database.php on line 41
 [2025-11-25 02:54:09] [Exception][TypeError] App\Core\App::get(): Return value must be of type App\Core\Router, App\Core\RouteConfig returned in C:\xampp\htdocs\digify_v4\app\Core\App.php on line 54
+[2025-11-26 11:07:53] [Exception][ParseError] syntax error, unexpected token "throw", expecting "function" or "const" in C:\xampp\htdocs\digify_v4\app\Controllers\AuthController.php on line 22
+[2025-11-26 11:07:54] [Exception][ParseError] syntax error, unexpected token "throw", expecting "function" or "const" in C:\xampp\htdocs\digify_v4\app\Controllers\AuthController.php on line 22
+[2025-11-26 11:08:11] [Exception][Exception] Testing error handler in C:\xampp\htdocs\digify_v4\app\Controllers\AuthController.php on line 40
+[2025-11-26 11:08:12] [Exception][Exception] Testing error handler in C:\xampp\htdocs\digify_v4\app\Controllers\AuthController.php on line 40
+[2025-11-26 11:08:40] [Exception][Exception] Testing error handler in C:\xampp\htdocs\digify_v4\app\Controllers\AuthController.php on line 40
+[2025-11-26 11:08:49] [Exception][Exception] Testing error handler in C:\xampp\htdocs\digify_v4\app\Controllers\AuthController.php on line 40
+[2025-11-26 11:08:57] [Exception][Exception] Testing error handler in C:\xampp\htdocs\digify_v4\app\Controllers\AuthController.php on line 40
+[2025-11-26 11:09:27] [Exception][Exception] Testing error handler in C:\xampp\htdocs\digify_v4\app\Controllers\AuthController.php on line 40
+[2025-11-26 11:09:44] [Exception][Exception] Testing error handler in C:\xampp\htdocs\digify_v4\app\Controllers\AuthController.php on line 40
+[2025-11-26 11:09:47] [Exception][Exception] Testing error handler in C:\xampp\htdocs\digify_v4\app\Controllers\AuthController.php on line 40
+[2025-11-26 11:09:48] [Exception][Exception] Testing error handler in C:\xampp\htdocs\digify_v4\app\Controllers\AuthController.php on line 40
+[2025-11-26 11:09:48] [Exception][Exception] Testing error handler in C:\xampp\htdocs\digify_v4\app\Controllers\AuthController.php on line 40
+[2025-11-26 11:09:48] [Exception][Exception] Testing error handler in C:\xampp\htdocs\digify_v4\app\Controllers\AuthController.php on line 40
+[2025-11-26 11:12:15] [Exception][Exception] Testing error handler in C:\xampp\htdocs\digify_v4\app\Controllers\AuthController.php on line 40
+[2025-11-26 11:12:43] [Exception][Exception] Testing error handler in C:\xampp\htdocs\digify_v4\app\Controllers\AuthController.php on line 40
+[2025-11-26 11:12:46] [Exception][Exception] Testing error handler in C:\xampp\htdocs\digify_v4\app\Controllers\AuthController.php on line 40
+[2025-11-26 11:12:47] [Exception][Exception] Testing error handler in C:\xampp\htdocs\digify_v4\app\Controllers\AuthController.php on line 40
+[2025-11-26 12:03:56] [Exception][Exception] Method login not found in controller App\Controllers\AuthController. in C:\xampp\htdocs\digify_v4\app\Core\Router.php on line 161
+[2025-11-26 12:04:04] [Exception][Exception] Method login not found in controller App\Controllers\AuthController. in C:\xampp\htdocs\digify_v4\app\Core\Router.php on line 161
+[2025-11-26 13:18:22] [Exception][Exception] Method login not found in controller App\Controllers\AuthController. in C:\xampp\htdocs\digify_v4\app\Core\Router.php on line 161
+[2025-11-26 13:18:29] [Exception][Exception] Method login not found in controller App\Controllers\AuthController. in C:\xampp\htdocs\digify_v4\app\Core\Router.php on line 161
+[2025-11-26 16:24:53] [Exception][Error] Interface "App\Core\MiddlewareInterface" not found in C:\xampp\htdocs\digify_v4\app\Middleware\CsrfMiddleware.php on line 12
+[2025-11-26 16:25:00] [Exception][Error] Interface "App\Core\MiddlewareInterface" not found in C:\xampp\htdocs\digify_v4\app\Middleware\CsrfMiddleware.php on line 12
+[2025-11-26 16:25:10] [Shutdown][64] Type of App\Models\UserModel::$table must be ?string (as in class App\Core\Model) in C:\xampp\htdocs\digify_v4\app\Models\UserModel.php on line 15
+[2025-11-26 16:27:05] [Exception][Exception] Database connection failed: SQLSTATE[HY000] [1045] Access denied for user ''@'localhost' (using password: NO) in C:\xampp\htdocs\digify_v4\app\Core\Database.php on line 57
+[2025-11-26 16:29:19] [Exception][ArgumentCountError] Too few arguments to function App\Controllers\AuthController::authenticate(), 0 passed and exactly 2 expected in C:\xampp\htdocs\digify_v4\app\Controllers\AuthController.php on line 66
+[2025-11-26 16:29:33] [Exception][ArgumentCountError] Too few arguments to function App\Controllers\AuthController::authenticate(), 0 passed and exactly 2 expected in C:\xampp\htdocs\digify_v4\app\Controllers\AuthController.php on line 66
+[2025-11-26 16:29:42] [Exception][ArgumentCountError] Too few arguments to function App\Controllers\AuthController::authenticate(), 0 passed and exactly 2 expected in C:\xampp\htdocs\digify_v4\app\Controllers\AuthController.php on line 66
+[2025-11-26 16:34:46] [Exception][ArgumentCountError] Too few arguments to function App\Controllers\AuthController::authenticate(), 0 passed and exactly 2 expected in C:\xampp\htdocs\digify_v4\app\Controllers\AuthController.php on line 66
+[2025-11-26 16:50:16] [Exception][PDOException] SQLSTATE[42S02]: Base table or view not found: 1146 Table 'digifydb.users' doesn't exist in C:\xampp\htdocs\digify_v4\app\Core\Database.php on line 100

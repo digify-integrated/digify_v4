@@ -7,18 +7,19 @@ namespace App\Core;
 /**
  * Class Csrf
  * --------------------------------------------------------
- * Handles CSRF token generation, retrieval, and validation.
- * Tokens are stored in the session and can be rotated for security.
+ * Handles CSRF token generation, retrieval, validation.
+ * Supports token rotation, configurable lifetime, and safe output.
  * --------------------------------------------------------
  */
 final class Csrf
 {
     private const SESSION_KEY = '_csrf_token';
+    private const SESSION_TIME_KEY = '_csrf_token_time';
+    private const TOKEN_LENGTH = 32;
 
     // --------------------------------------------------------
-    // Session Handling
+    // Ensure session is started
     // --------------------------------------------------------
-
     private static function ensureSession(): void
     {
         if (session_status() === PHP_SESSION_NONE) {
@@ -30,50 +31,77 @@ final class Csrf
     }
 
     // --------------------------------------------------------
-    // Token Generation & Retrieval
+    // Token Generation
     // --------------------------------------------------------
-
     public static function generateToken(): string
     {
         self::ensureSession();
 
-        $token = bin2hex(random_bytes(32));
+        $token = bin2hex(random_bytes(self::TOKEN_LENGTH));
         $_SESSION[self::SESSION_KEY] = $token;
+        $_SESSION[self::SESSION_TIME_KEY] = time();
 
         return $token;
     }
 
-    public static function getToken(): string
+    // --------------------------------------------------------
+    // Retrieve current token (rotate if expired)
+    // --------------------------------------------------------
+    public static function getToken(int $lifetime = 3600): string
     {
         self::ensureSession();
 
-        return $_SESSION[self::SESSION_KEY] ?? self::generateToken();
+        $token = $_SESSION[self::SESSION_KEY] ?? null;
+        $created = $_SESSION[self::SESSION_TIME_KEY] ?? 0;
+
+        if ($token === null || (time() - $created) > $lifetime) {
+            return self::generateToken();
+        }
+
+        return $token;
     }
 
     // --------------------------------------------------------
-    // Token Validation
+    // Validate token
     // --------------------------------------------------------
-
-    public static function validateToken(?string $token): bool
+    public static function validateToken(?string $token, int $lifetime = 3600): bool
     {
         self::ensureSession();
 
         $sessionToken = $_SESSION[self::SESSION_KEY] ?? '';
+        $created = $_SESSION[self::SESSION_TIME_KEY] ?? 0;
 
-        return !empty($token) && hash_equals($sessionToken, $token);
+        if (empty($token) || empty($sessionToken)) {
+            return false;
+        }
+
+        // Check token expiration
+        if ((time() - $created) > $lifetime) {
+            return false;
+        }
+
+        return hash_equals($sessionToken, $token);
     }
 
     // --------------------------------------------------------
-    // Form Helper
+    // Helper for HTML forms
     // --------------------------------------------------------
-
-    public static function field(): string
+    public static function field(int $lifetime = 3600): string
     {
-        $token = self::getToken();
+        $token = self::getToken($lifetime);
 
         return sprintf(
             '<input type="hidden" name="_csrf" value="%s">',
             htmlspecialchars($token, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
         );
+    }
+
+    // --------------------------------------------------------
+    // Optional: manually reset token
+    // --------------------------------------------------------
+    public static function reset(): void
+    {
+        self::ensureSession();
+        unset($_SESSION[self::SESSION_KEY], $_SESSION[self::SESSION_TIME_KEY]);
     }
 }

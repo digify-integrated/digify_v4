@@ -12,6 +12,7 @@ namespace App\Core;
  * - CSRF helpers
  * - File uploads
  * - Logging & debugging
+ * - Standardized JSON responses
  * --------------------------------------------------------
  */
 final class Helpers
@@ -24,6 +25,14 @@ final class Helpers
     {
         $baseUrl = $_ENV['APP_URL'] ?? 'http://localhost';
         return rtrim($baseUrl, '/') . '/' . ltrim($path, '/');
+    }
+
+    public static function baseUrl(string $path = ''): string
+    {
+        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $scriptDir = str_replace('/index.php', '', $_SERVER['SCRIPT_NAME'] ?? '');
+        return rtrim($protocol . $host . $scriptDir, '/') . '/' . ltrim($path, '/');
     }
 
     public static function e(string $string): string
@@ -48,43 +57,19 @@ final class Helpers
 
     public static function css(string $path, bool $cacheBust = false, bool $echo = true): ?string
     {
-        $url = self::asset($path);
-        if ($cacheBust) {
-            $url .= '?v=' . rand();
-        }
+        $url = self::asset($path) . ($cacheBust ? '?v=' . rand() : '');
         $tag = '<link href="' . $url . '" rel="stylesheet" type="text/css">';
-
-        if ($echo) {
-            echo $tag;
-            return null;
-        }
-
+        if ($echo) { echo $tag; return null; }
         return $tag;
     }
 
     public static function js(string $path, bool $cacheBust = false, bool $module = false, bool $echo = true): ?string
     {
-        $url = self::asset($path);
-        if ($cacheBust) {
-            $url .= '?v=' . rand();
-        }
+        $url = self::asset($path) . ($cacheBust ? '?v=' . rand() : '');
         $type = $module ? ' type="module"' : '';
         $tag = "<script src=\"$url\"$type></script>";
-
-        if ($echo) {
-            echo $tag;
-            return null;
-        }
-
+        if ($echo) { echo $tag; return null; }
         return $tag;
-    }
-
-    public static function baseUrl(string $path = ''): string
-    {
-        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
-        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-        $scriptDir = str_replace('/index.php', '', $_SERVER['SCRIPT_NAME'] ?? '');
-        return rtrim($protocol . $host . $scriptDir, '/') . '/' . ltrim($path, '/');
     }
 
     // --------------------------------------------------------
@@ -96,14 +81,14 @@ final class Helpers
         return Csrf::getToken();
     }
 
-    public static function validateCsrf(?string $token): bool
-    {
-        return Csrf::validateToken($token);
-    }
-
     public static function csrfField(): string
     {
         return Csrf::field();
+    }
+
+    public static function validateCsrf(?string $token): bool
+    {
+        return Csrf::validateToken($token);
     }
 
     // --------------------------------------------------------
@@ -113,19 +98,14 @@ final class Helpers
     public static function upload(array $file, string $folder = ''): ?string
     {
         $uploadDir = __DIR__ . '/../../storage/uploads/' . trim($folder, '/');
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
-        }
+        if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
 
-        $filename = basename($file['name']);
-        $filename = preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $filename);
+        $filename = preg_replace('/[^a-zA-Z0-9_\.-]/', '_', basename($file['name']));
         $targetPath = $uploadDir . '/' . $filename;
 
-        if (move_uploaded_file($file['tmp_name'], $targetPath)) {
-            return 'storage/uploads/' . ($folder ? $folder . '/' : '') . $filename;
-        }
-
-        return null;
+        return move_uploaded_file($file['tmp_name'], $targetPath)
+            ? 'storage/uploads/' . ($folder ? $folder . '/' : '') . $filename
+            : null;
     }
 
     // --------------------------------------------------------
@@ -135,13 +115,10 @@ final class Helpers
     public static function log(string $message, string $level = 'info'): void
     {
         $logDir = __DIR__ . '/../../storage/logs';
-        if (!is_dir($logDir)) {
-            mkdir($logDir, 0755, true);
-        }
+        if (!is_dir($logDir)) mkdir($logDir, 0755, true);
 
         $date = date('Y-m-d H:i:s');
-        $file = $logDir . '/app.log';
-        file_put_contents($file, "[$date][$level] $message" . PHP_EOL, FILE_APPEND);
+        file_put_contents($logDir . '/app.log', "[$date][$level] $message" . PHP_EOL, FILE_APPEND);
     }
 
     public static function dd(mixed $data): void
@@ -149,6 +126,41 @@ final class Helpers
         echo '<pre style="background:#f4f4f4;padding:10px;border-radius:5px;">';
         var_dump($data);
         echo '</pre>';
+        exit;
+    }
+
+    // --------------------------------------------------------
+    // STANDARDIZED JSON RESPONSES
+    // --------------------------------------------------------
+
+    public static function sendErrorResponse(string $title, string $message, array $additionalData = []): void
+    {
+        $response = array_merge([
+            'success'      => false,
+            'title'        => $title,
+            'message'      => $message,
+            'message_type' => 'error',
+        ], $additionalData);
+
+        self::sendJsonAndExit($response);
+    }
+
+    public static function sendSuccessResponse(string $title, string $message, array $additionalData = []): void
+    {
+        $response = array_merge([
+            'success'      => true,
+            'title'        => $title,
+            'message'      => $message,
+            'message_type' => 'success',
+        ], $additionalData);
+
+        self::sendJsonAndExit($response);
+    }
+
+    private static function sendJsonAndExit(array $data): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($data, JSON_UNESCAPED_UNICODE);
         exit;
     }
 }

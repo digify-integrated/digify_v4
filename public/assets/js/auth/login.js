@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
             disableButton('signin');
 
             try {
-                const response = await fetch('./app/Controllers/AuthenticationController.php', {
+                const response = await fetch('/authenticate', {
                     method: 'POST',
                     body: formData
                 });

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Middleware;
 
+use App\Middleware\MiddlewareInterface;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Csrf;
@@ -11,18 +12,21 @@ use App\Core\Csrf;
 final class CsrfMiddleware implements MiddlewareInterface
 {
     /**
-     * Handle the incoming request and validate CSRF token for POST requests.
+     * Handle incoming request and validate CSRF token
+     * for state-changing HTTP methods.
      */
     public function handle(Request $request, Response $response, callable $next): void
     {
-        // Only validate state-changing requests (POST, PUT, PATCH, DELETE)
-        if (in_array($request->method(), ['post', 'put', 'patch', 'delete'], true)) {
+        // Only validate CSRF for state-changing requests
+        $stateChangingMethods = ['post', 'put', 'patch', 'delete'];
+
+        if (in_array($request->method(), $stateChangingMethods, true)) {
             $token = $request->input('_csrf', null);
 
             if (!Csrf::validateToken($token)) {
                 $response->setStatusCode(403)
                          ->text('CSRF validation failed.');
-                return; // Stop further execution
+                return; // Stop execution on invalid token
             }
         }
 

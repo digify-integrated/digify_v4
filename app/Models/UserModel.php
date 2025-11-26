@@ -12,48 +12,97 @@ use App\Core\Model;
  * Handles user-related database operations.
  * --------------------------------------------------------
  */
-class UserModel extends Model
+final class UserModel extends Model
 {
-    /**
-     * Get new address type ID for a user
-     *
-     * @param int $id User ID
-     * @return int|null
-     */
-    public function getNewAddressTypeId(int $id): ?int
+    protected ?string $table = 'users';
+
+    // Optional: enable soft delete (requires `deleted_at` column)
+    protected ?string $softDeleteColumn = 'deleted_at';
+
+    // --------------------------------------------------------
+    // Retrieve user by ID
+    // --------------------------------------------------------
+    public function findById(int $id): ?array
     {
-        $row = $this->spRow('saveAddressType', ['id' => $id]);
-        return isset($row['new_address_type_id']) ? (int)$row['new_address_type_id'] : null;
+        $sql = "SELECT * FROM {$this->table} WHERE id = :id";
+        if ($this->softDeleteColumn) {
+            $sql .= " AND {$this->softDeleteColumn} IS NULL";
+        }
+        $sql .= " LIMIT 1";
+
+        return $this->fetch($sql, ['id' => $id]);
     }
 
-    /**
-     * Get all users
-     *
-     * @return array
-     */
-    public function getAllUsers(): array
+    // --------------------------------------------------------
+    // Retrieve user by email
+    // --------------------------------------------------------
+    public function findByEmail(string $email): ?array
     {
-        return $this->sp('getAllUsers');
+        $sql = "SELECT * FROM {$this->table} WHERE email = :email";
+        if ($this->softDeleteColumn) {
+            $sql .= " AND {$this->softDeleteColumn} IS NULL";
+        }
+        $sql .= " LIMIT 1";
+
+        return $this->fetch($sql, ['email' => $email]);
     }
 
-    /**
-     * Get a single user by ID
-     *
-     * @param int $id
-     * @return array|null
-     */
-    public function getUserById(int $id): ?array
+    // --------------------------------------------------------
+    // Create new user
+    // --------------------------------------------------------
+    public function create(array $data): int
     {
-        return $this->spRow('getUserById', ['id' => $id]);
+        // Expect $data['password'] to be already hashed
+        return $this->insert([
+            'name'     => $data['name'],
+            'email'    => $data['email'],
+            'password' => $data['password'],
+        ]);
     }
 
-    /**
-     * Get total count of users
-     *
-     * @return int
-     */
-    public function countUsers(): int
+    // --------------------------------------------------------
+    // Update user
+    // --------------------------------------------------------
+    public function updateUser(int $id, array $data): int
     {
-        return (int)$this->spValue('countUsers');
+        $updateData = [];
+
+        foreach (['name', 'email', 'password'] as $field) {
+            if (isset($data[$field])) {
+                $updateData[$field] = $data[$field];
+            }
+        }
+
+        if (empty($updateData)) {
+            return 0;
+        }
+
+        return $this->update($updateData, 'id = :id', ['id' => $id]);
+    }
+
+    // --------------------------------------------------------
+    // Delete user
+    // --------------------------------------------------------
+    public function deleteUser(int $id): int
+    {
+        if ($this->softDeleteColumn) {
+            return $this->update([$this->softDeleteColumn => date('Y-m-d H:i:s')], 'id = :id', ['id' => $id]);
+        }
+
+        return $this->delete('id = :id', ['id' => $id]);
+    }
+
+    // --------------------------------------------------------
+    // Authenticate user
+    // --------------------------------------------------------
+    public function authenticate(string $email, string $password): ?array
+    {
+        $user = $this->findByEmail($email);
+
+        if ($user && password_verify($password, $user['password'])) {
+            return $user;
+        }
+
+        return null;
     }
 }

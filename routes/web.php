@@ -1,6 +1,5 @@
 <?php
 
-use App\Middleware\CsrfMiddleware;
 use App\Middleware\AuthMiddleware;
 
 /*
@@ -9,49 +8,42 @@ use App\Middleware\AuthMiddleware;
 |--------------------------------------------------------------------------
 */
 
-// Home page
+// Home & auth pages
 $app->get('/', 'AuthController@index');
 $app->get('/account-security/forgot', 'AuthController@forgot');
 $app->get('/register', 'AuthController@register');
 
-// About page using a closure
-$app->get('/about', function (): string {
-    return 'This is the About page of digify_v4.';
-});
+// About page using closure
+$app->get('/about', fn() => 'This is the About page of digify_v4.');
 
-// Login POST route with CSRF protection
-$app->post('/login', 'AuthController@login')
-    ->middleware(CsrfMiddleware::class);
+// 404 page
+$app->get('/404', 'AuthController@error');
 
-// Dynamic user route with authentication
-$app->get('/users/{id}', 'AuthController@test')
-    ->middleware(AuthMiddleware::class);
+// Authentication POST route (CSRF automatically applied)
+$app->post('/authenticate', 'AuthController@authenticate');
 
 /*
 |--------------------------------------------------------------------------
-| Admin Route Group
+| Authenticated Routes
 |--------------------------------------------------------------------------
-| Routes with shared prefix and middleware
+| All routes in this group require user authentication
 */
-$app->group([
-    'prefix' => '/admin',
-    'middleware' => [AuthMiddleware::class, CsrfMiddleware::class],
-], function ($app) {
-    $app->get('/dashboard', function (): string {
-        return 'Admin Dashboard';
-    });
+$app->group(['middleware' => [AuthMiddleware::class]], function($app) {
 
-    $app->get('/settings', function (): string {
-        return 'Admin Settings Page';
-    });
+    // Dynamic user route
+    $app->get('/users/{id}', 'AuthController@test');
 
-    $app->post('/settings/save', 'AdminController@saveSettings');
+    // Profile update (POST) – CSRF automatically handled
+    $app->post('/profile/update', 'UserController@updateProfile');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Admin Route Group
+    |--------------------------------------------------------------------------
+    */
+    $app->group(['prefix' => '/admin'], function($app) {
+        $app->get('/dashboard', fn() => 'Admin Dashboard');
+        $app->get('/settings', fn() => 'Admin Settings Page');
+        $app->post('/settings/save', 'AdminController@saveSettings'); // CSRF applied automatically
+    });
 });
-
-/*
-|--------------------------------------------------------------------------
-| Routes with Multiple Middlewares
-|--------------------------------------------------------------------------
-*/
-$app->post('/profile/update', 'UserController@updateProfile')
-    ->middleware([AuthMiddleware::class, CsrfMiddleware::class]);
